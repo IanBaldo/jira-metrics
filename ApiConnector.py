@@ -24,11 +24,13 @@ class ApiConnector():
             object = json.dumps(object)
         return json.dumps(json.loads(object), sort_keys=True, indent=4, separators=(",", ": "))
 
-    def getIssuesByJQL(self, jql_filter):
+    def getIssuesByJQL(self, dt):
         url = "%s/rest/api/3/search" % (self.base_url)
-
+        
+        # * O filtro JQL deveria vir de fora, mas tive problemas com o encoding dos acentos
+        # * Isso estava quebrando o filtro e resultando em retorno vazio
         query = {
-            'jql': jql_filter
+            'jql': "(project = NOW AND (\"FORA DO PADRÃO - NOW Team (migrated 3)[Dropdown]\" in (\"Off Road\", Roku) or \"Squad[Dropdown]\" in (\"Off Road\", Roku)) and issuetype in (Story,Bug) and status not in (\"Item Concluído\", \"Tarefas pendentes.\", REFINADO, \"Aguardando Deploy\", \"Ready to Merge\", bloqueada)) or (project = NOW AND (\"FORA DO PADRÃO - NOW Team (migrated 3)[Dropdown]\" in (\"Off Road\", Roku) or \"Squad[Dropdown]\" in (\"Off Road\", Roku)) and issuetype in (Story,Bug) and status = \"Item Concluído\" and statusCategoryChangedDate >= '%s')" % dt
         }
         
         response = requests.request(
@@ -40,6 +42,9 @@ class ApiConnector():
 
         issues = []
         data = json.loads(response.text)
+        if not "issues" in data:
+            return issues
+            
         for api_issue in data["issues"]:
             issue = {
                 "key" : api_issue["key"],
@@ -54,8 +59,9 @@ class ApiConnector():
                 "status_history" : self.getIssueStatusHistory(api_issue["key"])
             }
             issues.append(issue)
+            print("Processed %d/%d" % (len(issues), len(data["issues"])), end = "\r")
 
-        return json.dumps(issues)
+        return issues
 
     def getIssueData(self, issue_key):
         url = "%s/rest/api/2/issue/%s" % (self.base_url, issue_key)
@@ -94,13 +100,22 @@ class ApiConnector():
         change_log = json.loads(self.getIssueChangelog(issue_key))
         status_history = []
         for entry in change_log['values']:
-            if not entry["items"][0]["field"] == 'status':
+            # ! Temp (ugly solution) need to adjust. Can't think atm
+            is_status_change = False
+            index = 0
+            while index < len(entry["items"]):
+                if entry["items"][index]["field"] == 'status':
+                    is_status_change = True
+                    break
+                index += 1
+
+            if not is_status_change:
                 continue
 
             status_change = {
                 'date': parser.parse(entry["created"]).strftime("%Y-%m-%d"),
-                'from': entry["items"][0]["fromString"],
-                'to': entry["items"][0]["toString"],
+                'from': entry["items"][index]["fromString"],
+                'to': entry["items"][index]["toString"],
                 'by_user':  entry["author"]["displayName"]
             }
             status_history.append(status_change)
