@@ -13,13 +13,6 @@ config = json.load(configFile)
 jira_api = ApiConnector(config['jira_server_url'], config['email'], config['api_token'])
 configFile.close()
 
-def simplifyObject(headers, row):
-    obj = {}
-    for i in range(len(headers)):
-        if not row[i]: continue
-        obj[headers[i]] =row[i]
-    return obj
-
 def createDateWithDelta(n_days):
     today = datetime.now()
     new_date = today + timedelta(days=n_days)
@@ -116,58 +109,48 @@ def plot2Pdf(pdf_title, cycle_time_avg, throughput):
         pdf.savefig(facecolor=deepgreen)
         plt.close()
 
-# f = open("output.json", "w")
+throughput = 0
+throughput_cycle_duration_days = -14
+throughput_timeframe = createDateWithDelta(throughput_cycle_duration_days)
 
-# Open file 
-with open('data.csv') as file_obj:
-      
-    # Create reader object by passing the file 
-    # object to reader method
-    reader_obj = csv.reader(file_obj)
-    headers = next(reader_obj)
+cycle_time_data = {
+    "Doing" : [],
+    "In Code Review" : [],
+    "Ready QA" : [],
+    "Em QA" : [],
+    "To Review" : [],
+    "PO Validation" : [],
+}
 
-    throughput = 0
-    throughput_cycle_duration_days = -14
-    throughput_timeframe = createDateWithDelta(throughput_cycle_duration_days)
+processados = 1
 
-    cycle_time_data = {
-        "Doing" : [],
-        "In Code Review" : [],
-        "Ready QA" : [],
-        "Em QA" : [],
-        "To Review" : [],
-        "PO Validation" : [],
-    }
+# * Jql partindo do config vai ter que aguardar algum desses itens:
+# * Alteração do filtro (nome de campo e status) para não usar acentuação
+# * Solução do problema com o encoding quando passados por parâmetro
+# jql = config['jql'] % throughput_timeframe
 
-    processados = 1
-    for row in reader_obj:
-        issue = simplifyObject(headers,row)
-        issue = jira_api.getIssueData(issue["Issue key"])
-
-        # Throughtput
-        if issue["status"] == "PO Validation":
-            if getDateDiff(issue["last_status_change"], throughput_timeframe) >= 0:
-                throughput += 1
-        
-        # Cycle Time
-        prev_status_change_date = None
-        for event in issue["status_history"]:
-            if prev_status_change_date is None and event["to"] == "Doing":
-                prev_status_change_date = event["date"]
-                if len(issue["status_history"]) == 1:
-                    cycle_time_data["Doing"].append(getDateDiff(dateNow(), event["date"]))
-                continue
-
-            if not event["from"] in cycle_time_data:
-                continue
-
-            cycle_time_data[event["from"]].append(getDateDiff(event["date"], prev_status_change_date))
+issues = jira_api.getIssuesByJQL(throughput_timeframe)
+for issue in issues:
+    # Throughtput
+    if issue["status"] in ["PO Validation","Item Conclu\u00eddo"]:
+        if getDateDiff(issue["last_status_change"], throughput_timeframe) >= 0:
+            throughput += 1
+    
+    # Cycle Time
+    prev_status_change_date = None
+    for event in issue["status_history"]:
+        if prev_status_change_date is None and event["to"] == "Doing":
             prev_status_change_date = event["date"]
+            if len(issue["status_history"]) == 1:
+                cycle_time_data["Doing"].append(getDateDiff(dateNow(), event["date"]))
+            continue
 
+        if not event["from"] in cycle_time_data:
+            continue
 
-        # f.write(jira_api.getIssueData(issue['Issue key'])+"\n")
-        print("Processando %s: %s %s" % (processados, issue["status"], issue["last_status_change"]))
-        processados += 1
-print("Throughput: %s" % throughput)
+        cycle_time_data[event["from"]].append(getDateDiff(event["date"], prev_status_change_date))
+        prev_status_change_date = event["date"]
+
+    processados += 1
+
 plot2Pdf('metricas off-road', calcCycleTimeAvg(cycle_time_data), throughput)
-# f.close()
