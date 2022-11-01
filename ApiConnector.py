@@ -24,6 +24,39 @@ class ApiConnector():
             object = json.dumps(object)
         return json.dumps(json.loads(object), sort_keys=True, indent=4, separators=(",", ": "))
 
+    def getIssuesByJQL(self, jql_filter):
+        url = "%s/rest/api/3/search" % (self.base_url)
+
+        query = {
+            'jql': jql_filter
+        }
+        
+        response = requests.request(
+            "GET",
+            url,
+            headers=self.headers,
+            params=query
+        )
+
+        issues = []
+        data = json.loads(response.text)
+        for api_issue in data["issues"]:
+            issue = {
+                "key" : api_issue["key"],
+                "status" : api_issue["fields"]["status"]["name"],
+                "last_status_change" : parser.parse(api_issue["fields"]["statuscategorychangedate"]).strftime("%Y-%m-%d"),
+                "now_team" : api_issue["fields"]["customfield_11377"]["value"],
+                "squad" : api_issue["fields"]["customfield_12124"]["value"],
+                "train" : api_issue["fields"]["customfield_11216"]["value"],
+                "estimate" : api_issue["fields"]["aggregatetimeoriginalestimate"],
+                "link" : api_issue["self"],
+                "is_blocked" : False if api_issue["fields"]["customfield_10048"] == None else True,
+                "status_history" : self.getIssueStatusHistory(api_issue["key"])
+            }
+            issues.append(issue)
+
+        return json.dumps(issues)
+
     def getIssueData(self, issue_key):
         url = "%s/rest/api/2/issue/%s" % (self.base_url, issue_key)
         response = requests.request(
@@ -41,7 +74,7 @@ class ApiConnector():
             "train" : data["fields"]["customfield_11216"]["value"],
             "estimate" : None if not "originalEstimateSeconds" in data["fields"]["timetracking"] else data["fields"]["timetracking"]["originalEstimateSeconds"],
             "link" : data["self"],
-            "is_blocked" : True if data["fields"]["customfield_10048"] is None else False,
+            "is_blocked" : False if data["fields"]["customfield_10048"] == None else True,
             "status_history" : self.getIssueStatusHistory(issue_key)
         }
 
