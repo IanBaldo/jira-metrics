@@ -122,6 +122,16 @@ cycle_time_data = {
     "PO Validation" : [],
 }
 
+## New Status
+# cycle_time_data = {
+#     "IN DEVELOPMENT" : [],
+#     "IN CODE REVIEW" : [],
+#     "TO TEST" : [],
+#     "IN TEST" : [],
+#     "TO REVIEW" : [],
+#     "IN REVIEW" : [],
+# }
+
 processados = 1
 
 # * Jql partindo do config vai ter que aguardar algum desses itens:
@@ -136,20 +146,17 @@ for issue in issues:
         if getDateDiff(issue["last_status_change"], throughput_timeframe) >= 0:
             throughput += 1
     
-    # Cycle Time
-    prev_status_change_date = None
+    prev_status_change = None
     for event in issue["status_history"]:
-        if prev_status_change_date is None and event["to"] == "Doing":
-            prev_status_change_date = event["date"]
-            if len(issue["status_history"]) == 1:
-                cycle_time_data["Doing"].append(getDateDiff(dateNow(), event["date"]))
-            continue
-
         if not event["from"] in cycle_time_data:
+            prev_status_change = event
             continue
 
-        cycle_time_data[event["from"]].append(getDateDiff(event["date"], prev_status_change_date))
-        prev_status_change_date = event["date"]
+        cycle_time_data[event["from"]].append(getDateDiff(event["date"], prev_status_change["date"]))
+        prev_status_change = event
+
+    if prev_status_change["to"] in cycle_time_data:
+        cycle_time_data[prev_status_change["to"]].append(getDateDiff(dateNow(), prev_status_change["date"]))
 
     processados += 1
 
