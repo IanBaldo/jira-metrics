@@ -30,9 +30,9 @@ class ApiConnector():
         # * O filtro JQL deveria vir de fora, mas tive problemas com o encoding dos acentos
         # * Isso estava quebrando o filtro e resultando em retorno vazio
         query = {
-            'jql': "(project = NOW AND (\"FORA DO PADRÃO - NOW Team (migrated 3)[Dropdown]\" in (\"Off Road\", Roku) or \"Squad[Dropdown]\" in (\"Off Road\", Roku)) and issuetype in (Story,Bug) and status not in (\"Item Concluído\", \"Tarefas pendentes.\", REFINADO, \"Aguardando Deploy\", \"Ready to Merge\", bloqueada)) or (project = NOW AND (\"FORA DO PADRÃO - NOW Team (migrated 3)[Dropdown]\" in (\"Off Road\", Roku) or \"Squad[Dropdown]\" in (\"Off Road\", Roku)) and issuetype in (Story,Bug) and status = \"Item Concluído\" and statusCategoryChangedDate >= '%s')" % dt
+            # 'jql': "key = NOW-30819"
+            "jql" : "(project = NOW AND (\"FORA DO PADRÃO - NOW Team (migrated 3)[Dropdown]\" in (\"Off Road\", Roku) or \"Squad[Dropdown]\" in (\"Off Road\", Roku)) and issuetype in (Story,Bug) and status not in (\"Item Concluído\", \"Tarefas pendentes.\", REFINADO, \"Aguardando Deploy\", \"Ready to Merge\", bloqueada)) or (project = NOW AND (\"FORA DO PADRÃO - NOW Team (migrated 3)[Dropdown]\" in (\"Off Road\", Roku) or \"Squad[Dropdown]\" in (\"Off Road\", Roku)) and issuetype in (Story,Bug) and status = \"Item Concluído\" and statusCategoryChangedDate >= '%s')" % dt
         }
-        
         response = requests.request(
             "GET",
             url,
@@ -44,23 +44,30 @@ class ApiConnector():
         data = json.loads(response.text)
         if not "issues" in data:
             return issues
-            
+
+        # print (json.dumps(json.loads(json.dumps(data["issues"])), sort_keys=True, indent=4, separators=(",", ": ")))
         for api_issue in data["issues"]:
             issue = {
                 "key" : api_issue["key"],
                 "status" : api_issue["fields"]["status"]["name"],
                 "last_status_change" : parser.parse(api_issue["fields"]["statuscategorychangedate"]).strftime("%Y-%m-%d"),
                 "now_team" : api_issue["fields"]["customfield_11377"]["value"],
-                "squad" : api_issue["fields"]["customfield_12124"]["value"],
                 "train" : api_issue["fields"]["customfield_11216"]["value"],
                 "estimate" : api_issue["fields"]["aggregatetimeoriginalestimate"],
                 "link" : api_issue["self"],
+                "issue_type" : api_issue["fields"]["issuetype"]["name"],
                 "is_blocked" : False if api_issue["fields"]["customfield_10048"] == None else True,
                 "status_history" : self.getIssueStatusHistory(api_issue["key"])
             }
+            if api_issue["fields"]["customfield_12124"] != None:
+                issue["squad"] = api_issue["fields"]["customfield_12124"]["value"]
+            else:
+                issue["squad"] = issue["now_team"]
             issues.append(issue)
             print("Processed %d/%d" % (len(issues), len(data["issues"])), end = "\r")
 
+        print("Processed %d/%d" % (len(issues), len(data["issues"])))
+        # print (json.dumps(json.loads(json.dumps(issues)), sort_keys=True, indent=4, separators=(",", ": ")))
         return issues
 
     def getIssueData(self, issue_key):
