@@ -62,13 +62,15 @@ for issue in issues:
 
 df = pd.DataFrame(cycle_time)
 
-status_to_display = 'Doing', 'Ready QA', 'Em QA', 'To Review', 'PO Validation', 'In Development', 'In Code Review', 'To Test', 'In Test', 'To Review', 'In Review'
+status_to_display = 'Doing', 'Ready QA', 'Em QA', 'PO Validation', 'In Development', 'In Code Review', 'To Test', 'In Test', 'To Review', 'In Review'
 cycle_time_plotable = df.query("status in (@status_to_display)").groupby(by=["issue_type", "status"]).mean("time").reset_index(level=[0,1])
 cycle_time_story = cycle_time_plotable.query("issue_type == 'Story'")
 cycle_time_bug = cycle_time_plotable.query("issue_type == 'Bug'")
 
-lead_time_story = cycle_time_story['time'].sum()
-lead_time_bug = cycle_time_bug['time'].sum()
+status_lead_time = 'Doing', 'Ready QA', 'Em QA', 'To Review', 'In Development', 'In Code Review', 'To Test', 'In Test',
+
+lead_time_story = cycle_time_story.query("status in (@status_lead_time)")['time'].sum()
+lead_time_bug = cycle_time_bug.query("status in (@status_lead_time)")['time'].sum()
 
 fig = make_subplots(
     rows=2,
