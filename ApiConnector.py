@@ -31,7 +31,7 @@ class ApiConnector():
         # * Isso estava quebrando o filtro e resultando em retorno vazio
         query = {
             # 'jql': "key = NOW-30819"
-            "jql" : "(project = NOW AND (\"FORA DO PADRÃO - NOW Team (migrated 3)[Dropdown]\" in (\"Off Road\", Roku) or \"Squad[Dropdown]\" in (\"Off Road\", Roku)) and issuetype in (Story,Bug) and status not in (\"Item Concluído\", \"Tarefas pendentes.\", REFINADO, \"Aguardando Deploy\", \"Ready to Merge\", bloqueada)) or (project = NOW AND (\"FORA DO PADRÃO - NOW Team (migrated 3)[Dropdown]\" in (\"Off Road\", Roku) or \"Squad[Dropdown]\" in (\"Off Road\", Roku)) and issuetype in (Story,Bug) and status = \"Item Concluído\" and statusCategoryChangedDate >= '%s')" % dt
+            "jql" : "( project = NOW AND ( \"FORA DO PADRÃO - NOW Team (migrated 3)[Dropdown]\" in (\"Off Road\", Roku) or \"Squad[Dropdown]\" in (\"Off Road\", Roku) ) and issuetype in (Story,Bug) and status not in ( \"Item Concluído\", \"Tarefas pendentes.\", REFINADO, \"Aguardando Deploy\", \"Ready to Merge\", bloqueada, Backlog, \"OK Refinement\", \"To Development\", Ready, \"In Review\", \"Po Validation\" ) ) or ( project = NOW AND ( \"FORA DO PADRÃO - NOW Team (migrated 3)[Dropdown]\" in (\"Off Road\", Roku) or \"Squad[Dropdown]\" in (\"Off Road\", Roku) ) and issuetype in (Story,Bug) and status in (\"Item Concluído\", Done, \"In Review\", \"Po Validation\") and statusCategoryChangedDate >= '%s' )" % dt
         }
         response = requests.request(
             "GET",
