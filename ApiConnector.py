@@ -69,6 +69,48 @@ class ApiConnector():
         print("Processed %d/%d" % (len(issues), len(data["issues"])))
         # print (json.dumps(json.loads(json.dumps(issues)), sort_keys=True, indent=4, separators=(",", ": ")))
         return issues
+    
+    def getIssuesByJQL2(self, jql, startAt):
+        url = "%s/rest/api/3/search" % (self.base_url)
+        
+        # * O filtro JQL deveria vir de fora, mas tive problemas com o encoding dos acentos
+        # * Isso estava quebrando o filtro e resultando em retorno vazio
+        query = {
+            # 'jql': "key = NOW-30819"
+            "jql" : jql,
+            "maxResults" : 50,
+            "startAt" : startAt
+        }
+        response = requests.request(
+            "GET",
+            url,
+            headers=self.headers,
+            params=query
+        )
+
+        issues = []
+        data = json.loads(response.text)
+        if not "issues" in data:
+            return issues
+
+        # print (json.dumps(json.loads(json.dumps(data)), sort_keys=True, indent=4, separators=(",", ": ")))
+        # return
+        for api_issue in data["issues"]:
+            issue = {
+                "key" : api_issue["key"],
+                "status" : api_issue["fields"]["status"]["name"],
+                "last_status_change" : parser.parse(api_issue["fields"]["statuscategorychangedate"]).strftime("%Y-%m-%d"),
+                "link" : api_issue["self"],
+                "issue_type" : api_issue["fields"]["issuetype"]["name"],
+                "status_history" : self.getIssueStatusHistory(api_issue["key"])
+            }
+            issues.append(issue)
+            print("Processed %d/%d" % (len(issues), len(data["issues"])), end = "\r")
+
+        print("Processed %d/%d" % (len(issues), len(data["issues"])))
+        # print (json.dumps(json.loads(json.dumps(issues)), sort_keys=True, indent=4, separators=(",", ": ")))
+        # return
+        return issues, data["total"]
 
     def getIssueData(self, issue_key):
         url = "%s/rest/api/2/issue/%s" % (self.base_url, issue_key)
