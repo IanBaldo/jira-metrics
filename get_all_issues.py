@@ -25,5 +25,5 @@ while(len(all_issues) < total):
     all_issues = all_issues + issues_page
     print("Total Issues: " + str(len(all_issues)) + " of " + str(total))
 
-with open('all_issues_v2.json', 'w') as f:
+with open('all_issues.json', 'w') as f:
     print (json.dumps(json.loads(json.dumps(all_issues)), sort_keys=True, indent=4, separators=(",", ": ")), file=f)
