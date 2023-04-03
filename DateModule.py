@@ -32,3 +32,6 @@ def calcCycleTimeAvg(data):
                 continue
             data[issue_type][status] = round((sum(data[issue_type][status]) / len(data[issue_type][status])), 1)
     return data
+
+def date2human(datestr):
+    return parser.parse(datestr).strftime("%d/%m/%Y")
